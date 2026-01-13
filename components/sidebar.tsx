@@ -8,6 +8,7 @@ import { usePathname } from "next/navigation"
 import {
   ShoppingBag,
   Users,
+  UserPlus,
   AlertCircle,
   FileText,
   Gift,
@@ -21,6 +22,7 @@ import {
   DollarSign,
   Package,
   Heart,
+  CircleDashed,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -120,15 +122,25 @@ export default function Sidebar() {
       icon: <Ticket className="h-5 w-5" />,
     },
     {
+      title: "Spin Wheel",
+      href: "/dashboard/spin-wheel",
+      icon: <CircleDashed className="h-5 w-5" />,
+    },
+    {
+      title: "Referrals",
+      href: "/dashboard/referrals",
+      icon: <UserPlus className="h-5 w-5" />,
+    },
+    {
       title: "Complaints",
       href: "/dashboard/complaints",
       icon: <AlertCircle className="h-5 w-5" />,
     },
-    {
-      title: "Tables",
-      href: "/dashboard/tables",
-      icon: <Table className="h-5 w-5" />,
-    },
+    // {
+    //   title: "Tables",
+    //   href: "/dashboard/tables",
+    //   icon: <Table className="h-5 w-5" />,
+    // },
     {
       title: "Settings",
       href: "/dashboard/settings",

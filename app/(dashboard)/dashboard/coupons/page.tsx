@@ -81,9 +81,10 @@ export default function CouponsPage() {
 
   const coupons = couponsData?.coupons || []
 
-  // Filter coupons based on search
+  // Filter coupons based on search and exclude spin wheel coupons
   const filteredCoupons = coupons.filter(coupon =>
-    coupon.code.toLowerCase().includes(searchTerm.toLowerCase())
+    coupon.code.toLowerCase().includes(searchTerm.toLowerCase()) && 
+    coupon.meta?.origin !== 'spinWheel'
   )
 
   // Create coupon mutation
@@ -323,6 +324,7 @@ export default function CouponsPage() {
               <TableHead>Usage</TableHead>
               <TableHead>Valid Until</TableHead>
               <TableHead>Tiers</TableHead>
+              <TableHead>Origin</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -352,6 +354,15 @@ export default function CouponsPage() {
                     <Badge variant="outline" className="text-xs">
                       {getTiersDisplay(coupon.applicableTiers)}
                     </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {coupon.meta?.origin ? (
+                      <Badge variant="secondary" className="bg-purple-100 text-purple-700 border-purple-200">
+                        {coupon.meta.origin === 'spinWheel' ? 'Spin Wheel' : coupon.meta.origin}
+                      </Badge>
+                    ) : (
+                      <Badge variant="secondary">Manual</Badge>
+                    )}
                   </TableCell>
                   <TableCell>
                     <Badge variant={coupon.isActive ? "default" : "secondary"}>

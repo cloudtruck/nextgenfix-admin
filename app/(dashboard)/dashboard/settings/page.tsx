@@ -378,14 +378,14 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="business" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-7">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="business">Business</TabsTrigger>
           <TabsTrigger value="hours">Hours</TabsTrigger>
           <TabsTrigger value="tax">Tax</TabsTrigger>
           <TabsTrigger value="delivery">Delivery</TabsTrigger>
           <TabsTrigger value="tiers">Tiers</TabsTrigger>
           <TabsTrigger value="referral">Referral</TabsTrigger>
-          <TabsTrigger value="scheduling">Scheduling</TabsTrigger>
+          {/* <TabsTrigger value="scheduling">Scheduling</TabsTrigger> */}
         </TabsList>
 
         <TabsContent value="business" className="space-y-4">
@@ -1006,7 +1006,7 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="scheduling" className="space-y-4">
+        {/* <TabsContent value="scheduling" className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
@@ -1099,7 +1099,7 @@ export default function SettingsPage() {
               </div>
             </CardFooter>
           </Card>
-        </TabsContent>
+        </TabsContent> */}
       </Tabs>
     </div>
   )

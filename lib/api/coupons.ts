@@ -14,6 +14,10 @@ export interface Coupon {
   validUntil: string
   isActive: boolean
   applicableTiers: ('all' | 'bronze' | 'silver' | 'gold')[]
+  meta?: {
+    origin?: string
+    originType?: string
+  }
   createdAt: string
   updatedAt: string
 }
@@ -46,6 +50,11 @@ export const deleteCoupon = async (id: string) => {
 
 export const toggleCouponStatus = async (id: string) => {
   const response = await apiClient.put<Coupon>(`/coupons/${id}/toggle`)
+  return response.data
+}
+
+export const getReferralAudit = async () => {
+  const response = await apiClient.get<{ referrers: any[]; coupons: Coupon[] }>('/coupons/admin/referrals')
   return response.data
 }
 

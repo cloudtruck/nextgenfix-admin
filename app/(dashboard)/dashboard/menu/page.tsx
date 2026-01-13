@@ -46,6 +46,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import * as menuApi from "@/lib/api/menu";
 import * as categoriesApi from "@/lib/api/categories";
@@ -72,6 +73,13 @@ export interface MenuItem {
   moodTag?: "good" | "angry" | "in_love" | "sad" | null;
   hungerLevelTag?: "little_hungry" | "quite_hungry" | "very_hungry" | "super_hungry" | null;
   recommendedItems?: string[];
+  specialOffer?: {
+    isSpecial: boolean;
+    validFrom?: string;
+    validUntil?: string;
+    specialPrice?: number;
+    description?: string;
+  };
   createdAt: string;
   updatedAt: string;
 }
@@ -114,6 +122,11 @@ export default function MenuItemsPage() {
     allergens: [],
     recommendedItems: [],
     images: [],
+    specialOffer: {
+      isSpecial: false,
+      validFrom: "",
+      validUntil: "",
+    },
   });
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
@@ -207,6 +220,7 @@ export default function MenuItemsPage() {
                   ? [obj.recommendedItems]
                   : [],
               images: Array.isArray(obj.images) ? obj.images as string[] : [],
+              specialOffer: obj.specialOffer as MenuItem["specialOffer"],
               createdAt: obj.createdAt as string,
               updatedAt: obj.updatedAt as string,
             };
@@ -305,6 +319,7 @@ export default function MenuItemsPage() {
             )
           : [],
         images: images,
+        specialOffer: data.specialOffer,
         createdAt: data.createdAt,
         updatedAt: data.updatedAt,
       };
@@ -366,6 +381,11 @@ export default function MenuItemsPage() {
         if (selectedItem.recommendedItems && selectedItem.recommendedItems.length > 0) {
           formData.append('recommendedItems', JSON.stringify(selectedItem.recommendedItems));
         }
+
+        // Handle specialOffer
+        if (selectedItem.specialOffer) {
+          formData.append('specialOffer', JSON.stringify(selectedItem.specialOffer));
+        }
         
         // Add image files
         selectedImages.forEach((file) => {
@@ -404,6 +424,10 @@ export default function MenuItemsPage() {
         }
         if (selectedItem.recommendedItems !== undefined) {
           payload.recommendedItems = selectedItem.recommendedItems;
+        }
+
+        if (selectedItem.specialOffer !== undefined) {
+          payload.specialOffer = selectedItem.specialOffer;
         }
         
         await menuApi.updateMenuItem(selectedItem.id, payload);
@@ -675,6 +699,11 @@ export default function MenuItemsPage() {
         formData.append('recommendedItems', JSON.stringify(newItemData.recommendedItems));
       }
 
+      // Handle specialOffer
+      if (newItemData.specialOffer) {
+        formData.append('specialOffer', JSON.stringify(newItemData.specialOffer));
+      }
+
       // Append image files
       selectedImages.forEach((file) => {
         formData.append('images', file);
@@ -682,6 +711,8 @@ export default function MenuItemsPage() {
       
       await menuApi.createMenuItem(formData);
       
+      const addedItemName = newItemData.name;
+
       // Success - close dialog and reset form
       setAddDialogOpen(false);
       setNewItemData({
@@ -695,6 +726,13 @@ export default function MenuItemsPage() {
         allergens: [],
         recommendedItems: [],
         images: [],
+        specialOffer: {
+          isSpecial: false,
+          validFrom: "",
+          validUntil: "",
+          specialPrice: 0,
+          description: "",
+        },
       });
       setSelectedImages([]);
       setImagePreviewUrls([]);
@@ -704,7 +742,7 @@ export default function MenuItemsPage() {
       
       toast({ 
         title: "Success!", 
-        description: `Menu item "₹{newItemData.name}" has been added successfully.` 
+        description: `Menu item "${addedItemName}" has been added successfully at ₹${price}.` 
       });
     } catch (err) {
       const errorMessage = getErrorMessage(err, "Failed to add menu item. Please try again.");
@@ -729,7 +767,7 @@ export default function MenuItemsPage() {
       fetchMenuItems();
       toast({ 
         title: "Success!", 
-        description: `Menu item "₹{selectedItem.name}" has been deleted.` 
+        description: `Menu item "${selectedItem.name}" has been deleted.` 
       });
     } catch (err) {
       const errorMessage = getErrorMessage(err, "Failed to delete menu item.");
@@ -797,6 +835,11 @@ export default function MenuItemsPage() {
             rating: 0,
             tags: [],
             isVeg: false,
+            specialOffer: {
+              isSpecial: false,
+              validFrom: "",
+              validUntil: "",
+            },
           });
           setSelectedImages([]);
           setImagePreviewUrls([]);
@@ -872,6 +915,7 @@ export default function MenuItemsPage() {
               <TableHead className="w-[80px]">Image</TableHead>
               <TableHead>Name</TableHead>
               <TableHead>Category</TableHead>
+              <TableHead>Type</TableHead>
               <TableHead>Price</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Prep Time</TableHead>
@@ -885,13 +929,13 @@ export default function MenuItemsPage() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={10} className="text-center">
+                <TableCell colSpan={11} className="text-center">
                   Loading menu items...
                 </TableCell>
               </TableRow>
             ) : menuItems?.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={10} className="text-center">
+                <TableCell colSpan={11} className="text-center">
                   No menu items found.
                 </TableCell>
               </TableRow>
@@ -918,7 +962,9 @@ export default function MenuItemsPage() {
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-col">
-                      <span className="font-medium">{item.name}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{item.name}</span>
+                      </div>
                       {/* <span className="text-xs text-muted-foreground">
                         {item.cuisine}
                       </span> */}
@@ -926,6 +972,17 @@ export default function MenuItemsPage() {
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline">{categories.find(cat => cat._id === item.category)?.name || item.category}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    {item.specialOffer?.isSpecial ? (
+                      <Badge variant="secondary" className="bg-amber-100 text-amber-800 border-amber-200">
+                        ⏰ Limited
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-muted-foreground">
+                        Regular
+                      </Badge>
+                    )}
                   </TableCell>
                   <TableCell>₹{item.price.toFixed(2)}</TableCell>
                   <TableCell>
@@ -1118,7 +1175,16 @@ export default function MenuItemsPage() {
 
                 <div className="space-y-1">
                   <p className="text-sm font-medium text-muted-foreground">Price</p>
-                  <p className="text-sm font-semibold">₹{selectedItem.price.toFixed(2)}</p>
+                  <div className="flex items-center gap-2">
+                    <p className={`text-sm font-semibold ${selectedItem.specialOffer?.isSpecial && selectedItem.specialOffer?.specialPrice ? "line-through text-muted-foreground" : ""}`}>
+                      ₹{selectedItem.price.toFixed(2)}
+                    </p>
+                    {selectedItem.specialOffer?.isSpecial && selectedItem.specialOffer?.specialPrice && (
+                      <p className="text-sm font-bold text-green-600">
+                        ₹{selectedItem.specialOffer.specialPrice.toFixed(2)}
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 <div className="space-y-1">
@@ -1154,6 +1220,24 @@ export default function MenuItemsPage() {
                 <div className="space-y-1">
                   <p className="text-sm font-medium text-muted-foreground">Rating</p>
                   <p className="text-sm">{selectedItem.rating} ⭐</p>
+                </div>
+
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-muted-foreground">Item Type</p>
+                  <div className="flex items-center gap-2">
+                    {selectedItem.specialOffer?.isSpecial ? (
+                      <>
+                        <Badge variant="secondary" className="bg-amber-100 text-amber-800 border-amber-200">⏰ Limited Time Offer</Badge>
+                        {selectedItem.specialOffer.validUntil && (
+                          <span className="text-xs text-muted-foreground">
+                            Ends: {new Date(selectedItem.specialOffer.validUntil).toLocaleDateString('en-GB')}
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      <Badge variant="outline">Regular Item</Badge>
+                    )}
+                  </div>
                 </div>
 
                 <div className="space-y-1">
@@ -1272,6 +1356,129 @@ export default function MenuItemsPage() {
                   </SelectContent>
                 </Select>
               </div>
+              {/* Limited Time Offer */}
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="edit-isSpecial" className="text-right">
+                  Limited Time
+                </Label>
+                <div className="col-span-3 flex items-center gap-2">
+                  <Checkbox
+                    id="edit-isSpecial"
+                    checked={selectedItem.specialOffer?.isSpecial || false}
+                    onCheckedChange={(checked) => 
+                      setSelectedItem({
+                        ...selectedItem,
+                        specialOffer: {
+                          isSpecial: checked === true,
+                          validFrom: selectedItem.specialOffer?.validFrom || "",
+                          validUntil: selectedItem.specialOffer?.validUntil || "",
+                          specialPrice: selectedItem.specialOffer?.specialPrice || 0,
+                          description: selectedItem.specialOffer?.description || "",
+                        }
+                      })
+                    }
+                  />
+                  <span className="text-sm text-muted-foreground">Make this a limited time menu item</span>
+                </div>
+              </div>
+
+              {selectedItem.specialOffer?.isSpecial && (
+                <>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="edit-validFrom" className="text-right">
+                      Available From
+                    </Label>
+                    <Input
+                      id="edit-validFrom"
+                      type="date"
+                      className="col-span-3"
+                      value={selectedItem.specialOffer?.validFrom ? new Date(selectedItem.specialOffer.validFrom).toISOString().split('T')[0] : ""}
+                      onChange={(e) => 
+                        setSelectedItem({
+                          ...selectedItem,
+                          specialOffer: {
+                            isSpecial: true,
+                            validFrom: e.target.value,
+                            validUntil: selectedItem.specialOffer?.validUntil || "",
+                            specialPrice: selectedItem.specialOffer?.specialPrice || 0,
+                            description: selectedItem.specialOffer?.description || "",
+                          }
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="edit-validUntil" className="text-right">
+                      Available Until
+                    </Label>
+                    <Input
+                      id="edit-validUntil"
+                      type="date"
+                      className="col-span-3"
+                      value={selectedItem.specialOffer?.validUntil ? new Date(selectedItem.specialOffer.validUntil).toISOString().split('T')[0] : ""}
+                      onChange={(e) => 
+                        setSelectedItem({
+                          ...selectedItem,
+                          specialOffer: {
+                            isSpecial: true,
+                            validFrom: selectedItem.specialOffer?.validFrom || "",
+                            validUntil: e.target.value,
+                            specialPrice: selectedItem.specialOffer?.specialPrice || 0,
+                            description: selectedItem.specialOffer?.description || "",
+                          }
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="edit-specialPrice" className="text-right">
+                      Special Price
+                    </Label>
+                    <Input
+                      id="edit-specialPrice"
+                      type="number"
+                      step="0.01"
+                      className="col-span-3"
+                      value={selectedItem.specialOffer?.specialPrice || ""}
+                      onChange={(e) => 
+                        setSelectedItem({
+                          ...selectedItem,
+                          specialOffer: {
+                            isSpecial: true,
+                            validFrom: selectedItem.specialOffer?.validFrom || "",
+                            validUntil: selectedItem.specialOffer?.validUntil || "",
+                            specialPrice: parseFloat(e.target.value),
+                            description: selectedItem.specialOffer?.description || "",
+                          }
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="edit-offerDescription" className="text-right">
+                      Offer Description
+                    </Label>
+                    <Input
+                      id="edit-offerDescription"
+                      className="col-span-3"
+                      placeholder="e.g. 50% off for new year"
+                      value={selectedItem.specialOffer?.description || ""}
+                      onChange={(e) => 
+                        setSelectedItem({
+                          ...selectedItem,
+                          specialOffer: {
+                            isSpecial: true,
+                            validFrom: selectedItem.specialOffer?.validFrom || "",
+                            validUntil: selectedItem.specialOffer?.validUntil || "",
+                            specialPrice: selectedItem.specialOffer?.specialPrice || 0,
+                            description: e.target.value,
+                          }
+                        })
+                      }
+                    />
+                  </div>
+                </>
+              )}
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="edit-moodTag" className="text-right">
                   Mood Tag
@@ -1385,7 +1592,7 @@ export default function MenuItemsPage() {
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img 
                               src={url} 
-                              alt={`Preview ₹{index + 1}`}
+                              alt={`Preview ${index + 1}`}
                               className="w-20 h-20 object-cover rounded border"
                             />
                             <button
@@ -1660,6 +1867,115 @@ export default function MenuItemsPage() {
                 </SelectContent>
               </Select>
             </div>
+            {/* Limited Time Offer */}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="isSpecial" className="text-right">
+                Limited Time
+              </Label>
+              <div className="col-span-3 flex items-center gap-2">
+                <Checkbox
+                  id="isSpecial"
+                  checked={(newItemData.specialOffer as any)?.isSpecial || false}
+                  onCheckedChange={(checked) => 
+                    setNewItemData({
+                      ...newItemData,
+                      specialOffer: {
+                        ...(newItemData.specialOffer as any),
+                        isSpecial: checked === true
+                      }
+                    })
+                  }
+                />
+                <span className="text-sm text-muted-foreground">Make this a limited time menu item</span>
+              </div>
+            </div>
+
+            {((newItemData.specialOffer as any)?.isSpecial) && (
+              <>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="validFrom" className="text-right">
+                    Available From
+                  </Label>
+                  <Input
+                    id="validFrom"
+                    type="date"
+                    className="col-span-3"
+                    value={(newItemData.specialOffer as any)?.validFrom || ""}
+                    onChange={(e) => 
+                      setNewItemData({
+                        ...newItemData,
+                        specialOffer: {
+                          ...(newItemData.specialOffer as any),
+                          validFrom: e.target.value
+                        }
+                      })
+                    }
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="validUntil" className="text-right">
+                    Available Until
+                  </Label>
+                  <Input
+                    id="validUntil"
+                    type="date"
+                    className="col-span-3"
+                    value={(newItemData.specialOffer as any)?.validUntil || ""}
+                    onChange={(e) => 
+                      setNewItemData({
+                        ...newItemData,
+                        specialOffer: {
+                          ...(newItemData.specialOffer as any),
+                          validUntil: e.target.value
+                        }
+                      })
+                    }
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="specialPrice" className="text-right">
+                    Special Price
+                  </Label>
+                  <Input
+                    id="specialPrice"
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    className="col-span-3"
+                    value={(newItemData.specialOffer as any)?.specialPrice || ""}
+                    onChange={(e) => 
+                      setNewItemData({
+                        ...newItemData,
+                        specialOffer: {
+                          ...(newItemData.specialOffer as any),
+                          specialPrice: parseFloat(e.target.value)
+                        }
+                      })
+                    }
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="offerDescription" className="text-right">
+                    Offer Description
+                  </Label>
+                  <Input
+                    id="offerDescription"
+                    placeholder="e.g. Festival Season Special"
+                    className="col-span-3"
+                    value={(newItemData.specialOffer as any)?.description || ""}
+                    onChange={(e) => 
+                      setNewItemData({
+                        ...newItemData,
+                        specialOffer: {
+                          ...(newItemData.specialOffer as any),
+                          description: e.target.value
+                        }
+                      })
+                    }
+                  />
+                </div>
+              </>
+            )}
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="rating" className="text-right">
                 Rating
@@ -1756,7 +2072,7 @@ export default function MenuItemsPage() {
                   accept="image/*"
                   multiple
                   onChange={handleImageSelect}
-                  className={`cursor-pointer ₹{formErrors.images ? "border-red-500" : ""}`}
+                  className={`cursor-pointer ${formErrors.images ? "border-red-500" : ""}`}
                 />
                 {imagePreviewUrls.length > 0 && (
                   <div className="flex flex-wrap gap-2 mt-2">
@@ -1765,7 +2081,7 @@ export default function MenuItemsPage() {
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img 
                           src={url} 
-                          alt={`Preview ₹{index + 1}`}
+                          alt={`Preview ${index + 1}`}
                           className="w-20 h-20 object-cover rounded border"
                         />
                         <button

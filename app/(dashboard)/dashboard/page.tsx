@@ -3,7 +3,11 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useEffect, useState } from "react";
 import * as analyticsApi from "@/lib/api/analytics";
+import * as menuApi from "@/lib/api/menu";
 import { useToast } from "@/hooks/use-toast";
+import { AlertCircle, Clock, Edit } from "lucide-react";
+import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
 
 // KPI Card Component
 const KPICard = ({ title, value, change, changeType, description, icon }: {
@@ -66,8 +70,31 @@ export default function DashboardPage() {
       categoryPerformance: []
     }
   });
+  const [expiringItems, setExpiringItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+
+  // Fetch expiring items
+  useEffect(() => {
+    const fetchExpiringItems = async () => {
+      try {
+        const res = await menuApi.getMenuItems({ limit: 100 });
+        const now = new Date();
+        const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+        
+        const expiring = res.menuItems.filter((item: any) => {
+          if (!item.specialOffer?.isSpecial || !item.specialOffer?.validUntil) return false;
+          const expiryDate = new Date(item.specialOffer.validUntil);
+          return expiryDate > now && expiryDate < tomorrow;
+        });
+        
+        setExpiringItems(expiring);
+      } catch (err) {
+        console.error("Error fetching expiring items:", err);
+      }
+    };
+    fetchExpiringItems();
+  }, []);
 
   // Fetch analytics data
   useEffect(() => {
@@ -154,10 +181,35 @@ export default function DashboardPage() {
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between space-y-2">
         <h2 className="text-3xl font-bold tracking-tight">Dashboard Overview</h2>
-        <div className="flex items-center space-x-2">
-          <span className="text-sm text-muted-foreground">Last 30 days</span>
-        </div>
       </div>
+
+      {/* Notifications/Alerts */}
+      {expiringItems.length > 0 && (
+        <Card className="border-amber-200 bg-amber-50">
+          <CardHeader className="flex flex-row items-center gap-2 pb-2">
+            <AlertCircle className="h-5 w-5 text-amber-600" />
+            <CardTitle className="text-base font-semibold text-amber-800">
+              Expiring Menu Items
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-amber-700 mb-3">
+              The following {expiringItems.length} items will expire within the next 24 hours and will be hidden from customers.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {expiringItems.map((item) => (
+                <Link key={item.id} href={`/dashboard/menu?search=${encodeURIComponent(item.name)}`}>
+                  <Badge variant="outline" className="bg-white border-amber-200 hover:bg-amber-100 cursor-pointer flex items-center gap-1 group">
+                    <Clock className="h-3 w-3" />
+                    {item.name}
+                    <Edit className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </Badge>
+                </Link>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Key Metrics Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useSearchParams, useRouter } from "next/navigation"
 import { MoreHorizontal, Search, Download, RefreshCw, Eye, Edit, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -52,17 +53,49 @@ const getErrorMessage = (err: unknown, defaultMessage: string): string => {
   return defaultMessage;
 };
 
+const getTierBadge = (tier?: string) => {
+  switch (tier?.toLowerCase()) {
+    case "bronze":
+      return (
+        <Badge className="bg-orange-100 text-orange-800 border-orange-200 hover:bg-orange-100">
+          🥉 Bronze
+        </Badge>
+      );
+    case "silver":
+      return (
+        <Badge className="bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-100">
+          🥈 Silver
+        </Badge>
+      );
+    case "gold":
+      return (
+        <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-100">
+          🥇 Gold
+        </Badge>
+      );
+    default:
+      return (
+        <Badge variant="outline" className="text-muted-foreground italic">
+          No Tier
+        </Badge>
+      );
+  }
+};
+
 
 export default function UsersPage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [dietPreferenceFilter, setDietPreferenceFilter] = useState("");
-  const [eatingPreferenceFilter, setEatingPreferenceFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState(searchParams.get("status") || "all");
+  const [dietPreferenceFilter, setDietPreferenceFilter] = useState(searchParams.get("diet") || "all");
+  const [eatingPreferenceFilter, setEatingPreferenceFilter] = useState(searchParams.get("eating") || "all");
+  const [tierFilter, setTierFilter] = useState(searchParams.get("tier") || "all");
   const [totalUsers, setTotalUsers] = useState(0);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
@@ -71,6 +104,18 @@ export default function UsersPage() {
   const [addDialoggOpen, setAddDialogOpen] = useState(false);
   const [newUserData, setNewUserData] = useState<Partial<User>>({ password: "" });
   const { toast } = useToast();
+
+  // Sync filters to URL
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (statusFilter !== "all" && statusFilter !== "") params.set("status", statusFilter);
+    if (dietPreferenceFilter !== "all" && dietPreferenceFilter !== "") params.set("diet", dietPreferenceFilter);
+    if (eatingPreferenceFilter !== "all" && eatingPreferenceFilter !== "") params.set("eating", eatingPreferenceFilter);
+    if (tierFilter !== "all" && tierFilter !== "") params.set("tier", tierFilter);
+    
+    const query = params.toString();
+    router.push(`/dashboard/users${query ? `?${query}` : ""}`, { scroll: false });
+  }, [statusFilter, dietPreferenceFilter, eatingPreferenceFilter, tierFilter, router]);
 
   // Fetch users
   useEffect(() => {
@@ -82,6 +127,7 @@ export default function UsersPage() {
           status: statusFilter === "all" ? "" : statusFilter,
           dietPreference: dietPreferenceFilter === "all" || dietPreferenceFilter === "none" ? "" : dietPreferenceFilter,
           eatingPreference: eatingPreferenceFilter === "all" || eatingPreferenceFilter === "none" ? "" : eatingPreferenceFilter,
+          tier: tierFilter === "all" ? undefined : tierFilter as any,
           page,
           limit,
         });
@@ -96,7 +142,7 @@ export default function UsersPage() {
     };
     fetchUsers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchQuery, statusFilter, dietPreferenceFilter, eatingPreferenceFilter, page, limit, refreshKey]);
+  }, [searchQuery, statusFilter, dietPreferenceFilter, eatingPreferenceFilter, tierFilter, page, limit, refreshKey]);
 
   const filteredUsers = users.filter(
     (user) =>
@@ -248,6 +294,18 @@ export default function UsersPage() {
             </SelectContent>
           </Select>
 
+          <Select value={tierFilter} onValueChange={(value: string) => setTierFilter(value)}>
+            <SelectTrigger className="h-8 w-[130px]">
+              <SelectValue placeholder="Tier" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Tiers</SelectItem>
+              <SelectItem value="bronze">🥉 Bronze</SelectItem>
+              <SelectItem value="silver">🥈 Silver</SelectItem>
+              <SelectItem value="gold">🥇 Gold</SelectItem>
+            </SelectContent>
+          </Select>
+
           {/* Only one Refresh button, triggers setRefreshKey */}
 
           <Button variant="outline" size="sm" className="h-8" onClick={() => setRefreshKey(prev => prev + 1)}>
@@ -281,6 +339,7 @@ export default function UsersPage() {
               <TableHead>Name</TableHead>
               <TableHead>Contact Info</TableHead>
               <TableHead>Preferences</TableHead>
+              <TableHead>Tier</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Orders</TableHead>
               <TableHead>Registered On</TableHead>
@@ -314,6 +373,7 @@ export default function UsersPage() {
                     <span className="text-xs text-muted-foreground">{user.eatingPreference}</span>
                   </div>
                 </TableCell>
+                <TableCell>{getTierBadge(user.tier)}</TableCell>
                 <TableCell>
                   <Badge
                     variant={user.status === "Active" ? "default" : "secondary"}
